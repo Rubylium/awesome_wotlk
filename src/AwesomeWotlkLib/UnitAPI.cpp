@@ -134,6 +134,63 @@ static int lua_UnitTokenFromGUID(lua_State* L) {
 
     return 0;
 }
+
+static int lua_GetNumAttackableUnitsAroundPlayer(lua_State* L)
+{
+    CGUnit_C* player = ObjectMgr::GetCGUnitPlayer();
+    if (!player) {
+        lua_pushnumber(L, 0);
+        return 1;
+    }
+
+    float range = 40.0f;
+    if (!lua_isnoneornil(L, 1))
+        range = static_cast<float>(luaL_checknumber(L, 1));
+
+    if (range < 0.0f)
+        range = 0.0f;
+
+    const float maxDistanceSq = range * range;
+    C3Vector playerPos;
+    player->GetPosition(playerPos);
+
+    int count = 0;
+    ObjectMgr::EnumObjects([&](guid_t guid) -> bool {
+        CGObject_C* object = ObjectMgr::GetObjectPtr(guid, TYPEMASK_UNIT);
+        if (!object)
+            return true;
+
+        if (object == player)
+            return true;
+
+        // PvE-only: skip player entities.
+        if (object->GetTypeID() == TYPEID_PLAYER)
+            return true;
+
+        CGUnit_C* unit = static_cast<CGUnit_C*>(object);
+        if (!player->CanAttack(unit))
+            return true;
+
+        if (unit->GetValue<uint32_t>(UNIT_FIELD_HEALTH) == 0)
+            return true;
+
+        C3Vector targetPos;
+        unit->GetPosition(targetPos);
+
+        const float dx = targetPos.X - playerPos.X;
+        const float dy = targetPos.Y - playerPos.Y;
+        const float dz = targetPos.Z - playerPos.Z;
+        const float distanceSq = dx * dx + dy * dy + dz * dz;
+
+        if (distanceSq <= maxDistanceSq)
+            ++count;
+
+        return true;
+    });
+
+    lua_pushnumber(L, count);
+    return 1;
+}
     /*
     Unit* npc = (Unit*)ObjectMgr::Get("npc", TYPEMASK_UNIT);
     if (npc && ObjectMgr::GetGuidByUnitID("npc") == guid) {
@@ -172,6 +229,7 @@ static int lua_openunitlib(lua_State* L)
         { "UnitOccupations", lua_UnitOccupations },
         { "UnitOwner", lua_UnitOwner },
         { "UnitTokenFromGUID", lua_UnitTokenFromGUID },
+        { "GetNumAttackableUnitsAroundPlayer", lua_GetNumAttackableUnitsAroundPlayer },
     };
 
     for (auto& [name, func] : funcs) {

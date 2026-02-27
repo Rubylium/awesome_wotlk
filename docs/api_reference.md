@@ -361,6 +361,19 @@ Returns owner name and GUID if passed a valid unitID, otherwise returns nothing.
 
 Returns unit token if passed a valid GUID, otherwise returns nothing.
 
+## GetNumAttackableUnitsAroundPlayer `API`
+**Arguments:** `range` (number, optional, default: `40`)  
+**Returns:** `count` (number)
+
+Returns how many hostile **PvE** units around the player are currently attackable and alive, within `range` yards.
+
+```lua
+local nearbyEnemies = GetNumAttackableUnitsAroundPlayer(10)
+if nearbyEnemies >= 3 then
+  -- AoE logic
+end
+```
+
 ---
 
 # Inventory
